@@ -42,18 +42,18 @@ func getUserInput() string {
 	return strings.TrimSpace(answer)
 }
 
-func shuffleProblems(problems []problem) {
-	rand.Seed(time.Now().UnixNano())
-	for i := len(problems) - 1; i > 0; i-- {
-		j := rand.Intn(i + 1)
-		problems[i], problems[j] = problems[j], problems[i]
-	}
+func shuffleProblems (problems []problem) {
+  rand.Seed(time.Now().UnixNano())
+  for i := len(problems) - 1 ; i> 0 ;i-- {
+    j:= rand.Intn(i + 1)
+    problems[i], problems[j] = problems[j], problems[i]
+  } 
 }
-
+  
 func main() {
 	csvFilename := flag.String("csv", "problems.csv", "a csv in the formart of 'question, answer'")
-	shuffleQuiz := flag.Bool("shuffle", false, "shuffle the quiz order")
 	flag.Parse()
+  shuffleQuiz := flag.Bool("shuffle", false, "shuffle the quiz order")
 
 	file, err := os.Open(*csvFilename)
 	if err != nil {
@@ -68,10 +68,6 @@ func main() {
 
 	// parsing the csv lines into a slice of the problem struct i created
 	problems := parseLines(lines)
-
-	if *shuffleQuiz {
-		shuffleProblems(problems)
-	}
 
 	correct := 0
 	for index, p := range problems {
