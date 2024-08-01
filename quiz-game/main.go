@@ -34,6 +34,12 @@ func parseLines(lines [][]string) []problem {
 	return parsed
 }
 
+func getUserInput() string {
+	reader := bufio.NewReader(os.Stdin)
+	answer, _ := reader.ReadString('\n')
+	return strings.TrimSpace(answer)
+}
+
 func main() {
 	csvFilename := flag.String("csv", "problems.csv", "a csv in the formart of 'question, answer'")
 	flag.Parse()
@@ -55,5 +61,11 @@ func main() {
 	correct := 0
 	for index, p := range problems {
 		fmt.Printf("Question %d : %s \n", index+1, p.question)
+		answer := getUserInput()
+		if answer == p.answer {
+			correct++
+		}
 	}
+
+	fmt.Printf("You scored %d out of %d\n", correct, len(problems))
 }
