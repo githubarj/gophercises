@@ -42,18 +42,19 @@ func getUserInput() string {
 	return strings.TrimSpace(answer)
 }
 
-func shuffleProblems (problems []problem) {
-  rand.Seed(time.Now().UnixNano())
-  for i := len(problems) - 1 ; i> 0 ;i-- {
-    j:= rand.Intn(i + 1)
-    problems[i], problems[j] = problems[j], problems[i]
-  } 
+func shuffleProblems(problems []problem) {
+	rand.Seed(time.Now().UnixNano())
+	for i := len(problems) - 1; i > 0; i-- {
+		j := rand.Intn(i + 1)
+		problems[i], problems[j] = problems[j], problems[i]
+	}
 }
-  
+
 func main() {
 	csvFilename := flag.String("csv", "problems.csv", "a csv in the formart of 'question, answer'")
+	shuffleQuiz := flag.Bool("shuffle", false, "shuffle the quiz order")
+	timeLimit := flag.Int("limit", 30, "set the time limit for the quiz in seconds")
 	flag.Parse()
-  shuffleQuiz := flag.Bool("shuffle", false, "shuffle the quiz order")
 
 	file, err := os.Open(*csvFilename)
 	if err != nil {
@@ -69,14 +70,46 @@ func main() {
 	// parsing the csv lines into a slice of the problem struct i created
 	problems := parseLines(lines)
 
-	correct := 0
-	for index, p := range problems {
-		fmt.Printf("Question %d : %s \n", index+1, p.question)
-		answer := getUserInput()
-		if answer == p.answer {
-			correct++
-		}
+	if *shuffleQuiz {
+		shuffleProblems(problems)
 	}
 
+	fmt.Println("Press enter to start the quiz. You have", *timeLimit, "seconds")
+	bufio.NewReader(os.Stdin).ReadBytes('\n')
+
+	timer := time.NewTimer(time.Duration(*timeLimit) * time.Second)
+	correct := 0
+
+	problemChan := make(chan *problem)
+	answerChan := make(chan string)
+
+	go func() {
+		for _, p := range problems {
+			problemChan <- &p
+			<-answerChan
+		}
+		close(problemChan)
+	}()
+
+	go func() {
+		for p := range problemChan {
+			fmt.Printf("%s", p.question)
+			answerChan <- getUserInput()
+		}
+	}()
+
+quizLoop:
+	for i := 0; i < len(problems); i++ {
+		select {
+		case <-timer.C:
+			fmt.Println("\n Time is up!")
+			break quizLoop
+		case p := <-problemChan:
+			answer := <-answerChan
+			if answer == p.answer {
+				correct++
+			}
+		}
+	}
 	fmt.Printf("You scored %d out of %d\n", correct, len(problems))
 }

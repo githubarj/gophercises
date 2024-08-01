@@ -53,6 +53,7 @@ func shuffleProblems(problems []problem) {
 func main() {
 	csvFilename := flag.String("csv", "problems.csv", "a csv in the formart of 'question, answer'")
 	shuffleQuiz := flag.Bool("shuffle", false, "shuffle the quiz order")
+	timeLimit := flag.Int("limit", 30, "set the time limit for the quiz in seconds")
 	flag.Parse()
 
 	file, err := os.Open(*csvFilename)
@@ -73,14 +74,36 @@ func main() {
 		shuffleProblems(problems)
 	}
 
-	correct := 0
-	for index, p := range problems {
-		fmt.Printf("Question %d : %s \n", index+1, p.question)
-		answer := getUserInput()
-		if answer == p.answer {
-			correct++
-		}
-	}
+	fmt.Println("Press enter to start the quiz. You have", *timeLimit, "seconds")
+	bufio.NewReader(os.Stdin).ReadString('\n')
 
+	timer := time.NewTimer(time.Duration(*timeLimit) * time.Second)
+	correct := 0
+
+	doneChan := make(chan bool)
+
+	go func() {
+		for i, p := range problems {
+			fmt.Printf("Problem #%d: %s = ", i+1, p.question)
+			answerCh := make(chan string)
+			go func() {
+				answerCh <- getUserInput()
+			}()
+
+			select {
+			case <-timer.C:
+				fmt.Println("\nTime's up!")
+				doneChan <- true
+				return
+			case answer := <-answerCh:
+				if answer == p.answer {
+					correct++
+				}
+			}
+		}
+		doneChan <- true
+	}()
+
+	<-doneChan
 	fmt.Printf("You scored %d out of %d\n", correct, len(problems))
 }
